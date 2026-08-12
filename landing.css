@@ -190,6 +190,25 @@ body {
   gap: 1.25rem;
 }
 
+@media (min-width: 900px) {
+  .library-inner {
+    max-width: 1080px;
+  }
+
+  .game-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .game-card {
+    grid-template-columns: 1fr;
+  }
+
+  .game-card-media {
+    min-height: 140px;
+    max-height: 170px;
+  }
+}
+
 .game-card {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);

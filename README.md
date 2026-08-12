@@ -4,6 +4,8 @@
 
 - **Landing** — static HTML at the site root (`index.html` + `landing.css`)
 - **Skippity** — React game at [`/skippity/`](https://games.palton.xyz/skippity/)
+- **Galaxian** — arcade shooter at [`/galaxian/`](https://games.palton.xyz/galaxian/) (deployed from the AI-Galaxian repo)
+- **Hex Combat** — simultaneous hex combat at [`/hex/`](https://games.palton.xyz/hex/) (deployed from the AI-hex repo)
 
 ## Run locally
 
