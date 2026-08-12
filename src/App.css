@@ -192,6 +192,12 @@
   font-weight: 700;
 }
 
+a.ghost-btn.home-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 .rules {
   max-width: 28rem;
   margin: 0 auto;

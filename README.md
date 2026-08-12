@@ -1,24 +1,43 @@
-# Skippity
+# Skippity / Palton Games
 
-A digital table-ready version of **[Skippity](https://boardgamegeek.com/boardgame/85563/skippity)** — the hopping set-collection game by Susan McKinley Ross (MindWare).
+**Live:** [games.palton.xyz](https://games.palton.xyz)
 
-## How to play
+- **Landing** — static HTML at the site root (`index.html` + `landing.css`)
+- **Skippity** — React game at [`/skippity/`](https://games.palton.xyz/skippity/)
 
-1. The 10×10 board is filled with 100 skippers (20 of each of five colors). The four center spaces start empty.
-2. On your turn, jump **any** skipper orthogonally over an adjacent skipper onto an empty square.
-3. Captured skippers go into your collection by color. You may chain jumps or stop early.
-4. When no jumps remain, the player with the most complete sets of all five colors wins. Tiebreak: most skippers.
-
-## Run
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually `http://localhost:5173`).
+- Landing: `http://localhost:5173/`
+- Game: `http://localhost:5173/skippity/`
 
-## Modes
+## Build
 
-- **2–4 players** hot-seat
-- Optional **AI opponents** (greedily multi-jumps toward complete sets)
+```bash
+npm run build
+```
+
+Produces `dist/` with the static landing page and `dist/skippity/` for the game.
+
+Preview the full site:
+
+```bash
+npm run preview
+```
+
+## Deploy to DreamHost
+
+```bash
+./deploy/dreamhost.sh YOUR_USER@YOUR_DREAMHOST_SERVER
+```
+
+## Skippity rules (short)
+
+1. 10×10 board, 100 skippers (20 of each of five colors); center four empty.
+2. Jump any skipper orthogonally over an adjacent skipper onto an empty square.
+3. Captures go to your collection by color; multi-jumps allowed.
+4. Most complete sets of all five colors wins (tiebreak: most skippers).

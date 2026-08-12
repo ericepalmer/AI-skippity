@@ -199,6 +199,9 @@ export default function App() {
           <button type="button" className="ghost-btn" onClick={handleNewGame}>
             New game
           </button>
+          <a className="ghost-btn home-link" href="/">
+            All games
+          </a>
         </div>
       </header>
 

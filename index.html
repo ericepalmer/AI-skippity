@@ -2,16 +2,73 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/jpeg" href="/images/logo-mark.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Skippity — a digital version of the MindWare hopping set-collection board game."
+      content="Palton Games — play digital table games at games.palton.xyz."
     />
-    <title>Skippity</title>
+    <title>Games · palton.xyz</title>
+    <link rel="stylesheet" href="/landing.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div class="landing">
+      <section class="hero" aria-label="Palton Games">
+        <img
+          class="hero-bg"
+          src="/images/hero-games.jpg"
+          alt=""
+          decoding="async"
+        />
+        <div class="hero-shade" aria-hidden="true"></div>
+        <div class="hero-content">
+          <img
+            class="hero-logo"
+            src="/images/logo-mark.jpg"
+            alt=""
+            width="68"
+            height="68"
+          />
+          <p class="hero-eyebrow">games.palton.xyz</p>
+          <h1 class="hero-brand">Games</h1>
+          <p class="hero-tag">
+            Digital table games you can open and play in a minute.
+          </p>
+        </div>
+      </section>
+
+      <section id="library" class="library" aria-labelledby="library-title">
+        <div class="library-inner">
+          <h2 id="library-title">On the table</h2>
+          <p class="library-lead">Pick a game to launch.</p>
+
+          <div class="game-grid">
+            <a class="game-card" href="/skippity/">
+              <div class="game-card-media">
+                <img
+                  src="/images/card-skippity.jpg"
+                  alt="Skippity board crowded with colorful hopping tokens"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="game-card-body">
+                <h3>Skippity</h3>
+                <p>
+                  Jump any skipper. Capture colors. Complete the most rainbow
+                  sets.
+                </p>
+                <span class="game-card-meta">2–4 players · ~20 min</span>
+                <span class="game-card-go">Play</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <footer class="landing-foot">
+        <p>Palton Games · games.palton.xyz</p>
+      </footer>
+    </div>
   </body>
 </html>
