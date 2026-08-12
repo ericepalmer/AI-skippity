@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+  --ink: #1c2a24;
+  --ink-soft: #3d5248;
+  --paper: #e8f0e6;
+  --felt: #1f6b4a;
+  --felt-deep: #145238;
+  --wood-light: #c4a574;
+  --wood-dark: #8b6914;
+  --cream: #f3f7ef;
+  --gold: #e8b84a;
+  --danger: #c23b2a;
+
+  --red: #e03c2f;
+  --yellow: #f0c41a;
+  --orange: #ef7a1a;
+  --green: #2f9e4a;
+  --blue: #2f6fdb;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--cream);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232, 184, 74, 0.25), transparent),
+    radial-gradient(circle at 15% 80%, rgba(47, 158, 74, 0.12), transparent 40%),
+    radial-gradient(circle at 90% 20%, rgba(239, 122, 26, 0.1), transparent 35%),
+    linear-gradient(165deg, #dfece0 0%, #f5f8f2 40%, #e4efe8 100%);
+}
+
+#root {
+  min-height: 100svh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
