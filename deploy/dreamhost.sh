@@ -28,6 +28,8 @@ npm run build
 echo "→ Uploading to $REMOTE:~/$REMOTE_PATH …"
 rsync -avz --delete \
   --exclude .DS_Store \
+  --exclude skippity/game-starts.log \
+  --exclude skippity/count.html \
   dist/ "$REMOTE:~/$REMOTE_PATH/"
 
 echo "✓ Live at https://games.palton.xyz"
