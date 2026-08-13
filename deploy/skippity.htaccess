@@ -1,0 +1,32 @@
+# Skippity app folder — only rewrite missing paths inside /skippity/
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /skippity/
+
+  # Never expose the game-start log over HTTP
+  RewriteRule ^game-starts\.log$ - [F,L]
+
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /skippity/index.html [L]
+</IfModule>
+
+# Block direct download of log files (Apache 2.2 + 2.4)
+<FilesMatch "\.(log)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>

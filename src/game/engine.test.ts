@@ -4,12 +4,15 @@
  */
 import {
   applyJump,
+  confirmTurn,
   createBoard,
   getSingleJumpsFrom,
   piecesWithMoves,
+  setConfirmTurns,
   startGame,
   determineWinners,
   endTurn,
+  undoTurn,
 } from './engine'
 import type { Board, Player } from './types'
 import { emptyCaptures } from './types'
@@ -47,7 +50,16 @@ const jumps2 = getSingleJumpsFrom(after1, { row: 0, col: 2 })
 assert(jumps2.some((j) => j.to.col === 4 && j.captured === 'green'), 'chain possible')
 
 // Start game + apply jump then optional end mid-chain
-const state = startGame({ playerCount: 2, aiOpponents: false })
+const state = startGame({
+  playerCount: 2,
+  aiOpponents: false,
+  aiDifficulty: 'medium',
+})
+assert(
+  state.currentPlayerIndex === 0 || state.currentPlayerIndex === 1,
+  'random first player in range',
+)
+const starter = state.currentPlayerIndex
 const movable = piecesWithMoves(state.board)
 assert(movable.length > 0, 'opening has moves')
 
@@ -59,8 +71,49 @@ let next = applyJump(state, opts[0])
 if (next.turnChain.length > 0) {
   next = endTurn(next)
 }
-assert(next.currentPlayerIndex === 1, 'turn advanced')
-assert(next.players[0].captures[opts[0].captured] === 1, 'captured counted')
+assert(
+  next.currentPlayerIndex === (starter + 1) % 2,
+  'turn advanced to next player',
+)
+assert(
+  next.players[starter].captures[opts[0].captured] === 1,
+  'captured counted for starter',
+)
+
+// Confirm-turn mode holds before handing off
+const holdGame = setConfirmTurns(
+  startGame({
+    playerCount: 2,
+    aiOpponents: false,
+    aiDifficulty: 'easy',
+  }),
+  true,
+)
+const holdStarter = holdGame.currentPlayerIndex
+const holdOpts = getSingleJumpsFrom(
+  holdGame.board,
+  piecesWithMoves(holdGame.board)[0],
+)
+let held = applyJump(holdGame, holdOpts[0])
+if (held.turnChain.length > 0 && !held.awaitingConfirm) {
+  held = endTurn(held)
+}
+assert(held.awaitingConfirm, 'awaits confirm')
+assert(held.currentPlayerIndex === holdStarter, 'still same player while held')
+const undone = undoTurn(held)
+assert(undone.turnChain.length === 0, 'undo clears chain')
+assert(!undone.awaitingConfirm, 'undo clears hold')
+
+held = applyJump(holdGame, holdOpts[0])
+if (held.turnChain.length > 0 && !held.awaitingConfirm) {
+  held = endTurn(held)
+}
+const confirmed = confirmTurn(held)
+assert(!confirmed.awaitingConfirm, 'confirm clears hold')
+assert(
+  confirmed.currentPlayerIndex === (holdStarter + 1) % 2,
+  'confirm advances turn',
+)
 
 // Scoring
 const p1: Player = {
@@ -95,5 +148,4 @@ const p4: Player = {
 assert(determineWinners([p3, p4]).join() === '1', 'tiebreak total')
 
 console.log('All engine checks passed.')
-// silence unused
 void emptyCaptures

@@ -3,13 +3,17 @@ import { Board } from './components/Board'
 import { ScorePanel } from './components/ScorePanel'
 import { SetupScreen } from './components/SetupScreen'
 import { makeAIMove } from './game/ai'
+import { recordGameStart } from './game/analytics'
 import {
   applyJump,
+  confirmTurn,
   endTurn,
   getAvailableJumps,
   getSingleJumpsFrom,
   piecesWithMoves,
+  setConfirmTurns,
   startGame,
+  undoTurn,
 } from './game/engine'
 import type { GameConfig, GameState, JumpStep, Pos } from './game/types'
 import { completeSets, totalCaptured } from './game/types'
@@ -22,9 +26,13 @@ export default function App() {
   const [aiTrail, setAiTrail] = useState<JumpStep[] | null>(null)
 
   const current = state?.players[state.currentPlayerIndex]
-  const midTurn = Boolean(state && state.turnChain.length > 0)
+  const midTurn = Boolean(state && state.turnChain.length > 0 && !state.awaitingConfirm)
+  const awaitingConfirm = Boolean(state?.awaitingConfirm)
   const humanCanPlay =
-    state?.phase === 'playing' && Boolean(current) && !current?.isAI
+    state?.phase === 'playing' &&
+    Boolean(current) &&
+    !current?.isAI &&
+    !awaitingConfirm
 
   // Clear AI path preview on any pointer interaction
   useEffect(() => {
@@ -39,23 +47,28 @@ export default function App() {
     if (!state || state.phase !== 'playing') return
     const player = state.players[state.currentPlayerIndex]
     if (!player.isAI) return
-    // only act at start of AI turn
-    if (state.turnChain.length > 0) return
+    if (state.turnChain.length > 0 || state.awaitingConfirm) return
+
+    const delay =
+      state.aiDifficulty === 'easy'
+        ? 350
+        : state.aiDifficulty === 'hard'
+          ? 700
+          : 500
 
     const timer = window.setTimeout(() => {
       setState((s) => {
         if (!s || s.phase !== 'playing') return s
         if (!s.players[s.currentPlayerIndex]?.isAI) return s
-        if (s.turnChain.length > 0) return s
+        if (s.turnChain.length > 0 || s.awaitingConfirm) return s
         const next = makeAIMove(s)
         if (next.lastMove?.length) {
-          // Defer so we don't nest setState; show trail after the move lands
           queueMicrotask(() => setAiTrail([...next.lastMove!]))
         }
         return next
       })
       setSelected(null)
-    }, 500)
+    }, delay)
     return () => window.clearTimeout(timer)
   }, [state])
 
@@ -91,6 +104,7 @@ export default function App() {
     setState(startGame(config))
     setSelected(null)
     setAiTrail(null)
+    recordGameStart()
   }, [])
 
   const handleCellClick = useCallback(
@@ -139,6 +153,20 @@ export default function App() {
     setSelected(null)
   }, [])
 
+  const handleConfirmTurn = useCallback(() => {
+    setState((s) => (s ? confirmTurn(s) : s))
+    setSelected(null)
+  }, [])
+
+  const handleUndoTurn = useCallback(() => {
+    setState((s) => (s ? undoTurn(s) : s))
+    setSelected(null)
+  }, [])
+
+  const handleToggleConfirm = useCallback(() => {
+    setState((s) => (s ? setConfirmTurns(s, !s.confirmTurns) : s))
+  }, [])
+
   const handleNewGame = useCallback(() => {
     setState(null)
     setSelected(null)
@@ -154,6 +182,10 @@ export default function App() {
   }
 
   const activePiecePos = midTurn ? state.activePiece : selected
+  const canUndo =
+    state.phase === 'playing' &&
+    !current?.isAI &&
+    state.turnChain.length > 0
 
   return (
     <div className="app playing">
@@ -164,11 +196,13 @@ export default function App() {
             <p className="status">
               {current?.isAI
                 ? `${current.name} is jumping…`
-                : aiTrail?.length
-                  ? 'AI path shown — click anywhere to clear'
-                  : midTurn
-                    ? 'Keep jumping, or end your turn'
-                    : `${current?.name}'s turn — select a glowing skipper`}
+                : awaitingConfirm
+                  ? 'Turn ready — Confirm to hand off, or Undo to rewind'
+                  : aiTrail?.length
+                    ? 'AI path shown — click anywhere to clear'
+                    : midTurn
+                      ? 'Keep jumping, or end your turn'
+                      : `${current?.name}'s turn — select a glowing skipper`}
             </p>
           )}
           {state.phase === 'ended' && (
@@ -191,9 +225,49 @@ export default function App() {
           )}
         </div>
         <div className="top-actions">
+          <label
+            className={[
+              'confirm-toggle',
+              state.confirmTurns ? 'on' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            title="When on, you Confirm before the next player or AI goes"
+          >
+            <input
+              type="checkbox"
+              checked={state.confirmTurns}
+              onChange={handleToggleConfirm}
+              disabled={state.phase === 'ended'}
+            />
+            <span>Confirm turns</span>
+          </label>
+          {awaitingConfirm && (
+            <>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={handleConfirmTurn}
+              >
+                Confirm turn
+              </button>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={handleUndoTurn}
+              >
+                Undo turn
+              </button>
+            </>
+          )}
           {midTurn && humanCanPlay && (
             <button type="button" className="secondary-btn" onClick={handleEndTurn}>
               End turn
+            </button>
+          )}
+          {canUndo && !awaitingConfirm && state.confirmTurns && (
+            <button type="button" className="ghost-btn" onClick={handleUndoTurn}>
+              Undo turn
             </button>
           )}
           <button type="button" className="ghost-btn" onClick={handleNewGame}>
@@ -219,7 +293,7 @@ export default function App() {
           landings={landings}
           lastJumpSquares={lastJumpSquares}
           aiTrail={aiTrail}
-          midTurn={midTurn}
+          midTurn={midTurn || awaitingConfirm}
           onCellClick={handleCellClick}
           disabled={!humanCanPlay || state.phase === 'ended'}
         />

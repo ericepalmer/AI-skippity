@@ -136,6 +136,25 @@
   box-shadow: 0 4px 12px rgba(31, 107, 74, 0.35);
 }
 
+.difficulty-row .choice {
+  width: auto;
+  min-width: 4.5rem;
+  padding: 0 0.75rem;
+}
+
+.hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.35;
+}
+
+.start-hint {
+  margin-top: -0.35rem;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -254,6 +273,35 @@ a.ghost-btn.home-link {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.confirm-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid rgba(28, 42, 36, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.confirm-toggle.on {
+  border-color: var(--felt);
+  background: rgba(31, 107, 74, 0.12);
+  color: var(--felt-deep);
+}
+
+.confirm-toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--felt);
+  cursor: pointer;
 }
 
 .table {

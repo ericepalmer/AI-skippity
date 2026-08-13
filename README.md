@@ -2,10 +2,10 @@
 
 **Live:** [games.palton.xyz](https://games.palton.xyz)
 
-- **Landing** — static HTML at the site root (`index.html` + `landing.css`)
-- **Skippity** — React game at [`/skippity/`](https://games.palton.xyz/skippity/)
-- **Galaxian** — arcade shooter at [`/galaxian/`](https://games.palton.xyz/galaxian/) (deployed from the AI-Galaxian repo)
-- **Hex Combat** — simultaneous hex combat at [`/hex/`](https://games.palton.xyz/hex/) (deployed from the AI-hex repo)
+- **Landing** — static HTML in `portal/` (deployed to the site root)
+- **Skippity** — React game at [`/skippity/`](https://games.palton.xyz/skippity/) · counts: [`/skippity/count.html`](https://games.palton.xyz/skippity/count.html)
+- **Galaxian** — arcade shooter at [`/galaxian/`](https://games.palton.xyz/galaxian/) · counts: [`/galaxian/count.html`](https://games.palton.xyz/galaxian/count.html)
+- **Hex Combat** — hex combat at [`/hex/`](https://games.palton.xyz/hex/) · counts: [`/hex/count.html`](https://games.palton.xyz/hex/count.html)
 
 ## Run locally
 
@@ -36,6 +36,22 @@ npm run preview
 ```bash
 ./deploy/dreamhost.sh YOUR_USER@YOUR_DREAMHOST_SERVER
 ```
+
+## Game-start counters (no database)
+
+Each game keeps **its own** log + `count.html` in its folder:
+
+| Game | Hit URL | Counts page |
+|------|---------|-------------|
+| Skippity | `/skippity/hit.php?event=game_start` | [`/skippity/count.html`](https://games.palton.xyz/skippity/count.html) |
+| Galaxian | `/galaxian/hit.php?event=game_start` | [`/galaxian/count.html`](https://games.palton.xyz/galaxian/count.html) |
+| Hex Combat | `/hex/hit.php?event=game_start` | [`/hex/count.html`](https://games.palton.xyz/hex/count.html) |
+
+On each hit the PHP script appends to that game’s `game-starts.log` and rebuilds that game’s `count.html` (weekly top 5 + per-day IPs).
+
+The `.log` file is blocked from web download. `count.html` is public — lock it in DreamHost if you want it private.
+
+Local `npm run dev` / static servers have no PHP, so the ping fails quietly.
 
 ## Skippity rules (short)
 

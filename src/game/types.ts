@@ -31,9 +31,12 @@ export interface Player {
 
 export type Phase = 'setup' | 'playing' | 'ended'
 
+export type AiDifficulty = 'easy' | 'medium' | 'hard'
+
 export interface GameConfig {
   playerCount: 2 | 3 | 4
   aiOpponents: boolean
+  aiDifficulty: AiDifficulty
 }
 
 export interface GameState {
@@ -47,6 +50,12 @@ export interface GameState {
   activePiece: Pos | null
   winnerIds: number[]
   lastMove: JumpStep[] | null
+  confirmTurns: boolean
+  aiDifficulty: AiDifficulty
+  /** Board snapshot at the start of the current turn (for undo). */
+  turnStartBoard: Board | null
+  /** Jumps done; waiting for Confirm before handing off. */
+  awaitingConfirm: boolean
 }
 
 export function emptyCaptures(): Captures {
@@ -59,4 +68,10 @@ export function completeSets(captures: Captures): number {
 
 export function totalCaptured(captures: Captures): number {
   return COLORS.reduce((sum, c) => sum + captures[c], 0)
+}
+
+export const AI_DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
 }

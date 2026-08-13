@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import type { GameConfig } from '../game/types'
+import {
+  AI_DIFFICULTY_LABELS,
+  type AiDifficulty,
+  type GameConfig,
+} from '../game/types'
 
 interface SetupScreenProps {
   onStart: (config: GameConfig) => void
@@ -8,6 +12,7 @@ interface SetupScreenProps {
 export function SetupScreen({ onStart }: SetupScreenProps) {
   const [playerCount, setPlayerCount] = useState<2 | 3 | 4>(2)
   const [aiOpponents, setAiOpponents] = useState(true)
+  const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>('medium')
 
   return (
     <div className="setup-screen">
@@ -45,13 +50,55 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           <span>Play against AI opponents</span>
         </label>
 
+        {aiOpponents && (
+          <fieldset>
+            <legend>AI difficulty</legend>
+            <div className="choice-row difficulty-row">
+              {(['easy', 'medium', 'hard'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  className={
+                    aiDifficulty === level ? 'choice selected' : 'choice'
+                  }
+                  onClick={() => setAiDifficulty(level)}
+                  title={
+                    level === 'easy'
+                      ? 'Soft plays — most kids can win'
+                      : level === 'medium'
+                        ? 'Solid play — beatable once you know the game'
+                        : 'Denies good replies — you have to earn it'
+                  }
+                >
+                  {AI_DIFFICULTY_LABELS[level]}
+                </button>
+              ))}
+            </div>
+            <p className="hint">
+              {aiDifficulty === 'easy' &&
+                'Makes short, soft jumps — great for kids.'}
+              {aiDifficulty === 'medium' &&
+                'Chases sets well, with a few mistakes you can exploit.'}
+              {aiDifficulty === 'hard' &&
+                'Tries hard not to leave you juicy multi-jumps.'}
+            </p>
+          </fieldset>
+        )}
+
         <button
           type="button"
           className="primary-btn"
-          onClick={() => onStart({ playerCount, aiOpponents })}
+          onClick={() =>
+            onStart({
+              playerCount,
+              aiOpponents,
+              aiDifficulty,
+            })
+          }
         >
           Deal the board
         </button>
+        <p className="hint start-hint">First player is chosen at random.</p>
       </div>
 
       <details className="rules">

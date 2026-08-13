@@ -1,6 +1,7 @@
 import {
   BOARD_SIZE,
   COLORS,
+  type AiDifficulty,
   type Board,
   type Captures,
   type Color,
@@ -9,6 +10,7 @@ import {
   type JumpStep,
   type Player,
   type Pos,
+  AI_DIFFICULTY_LABELS,
   completeSets,
   emptyCaptures,
   totalCaptured,
@@ -65,7 +67,12 @@ export function createPlayers(config: GameConfig): Player[] {
   return Array.from({ length: config.playerCount }, (_, i) => {
     let name: string
     if (config.aiOpponents) {
-      name = i === 0 ? 'You' : `AI ${i}`
+      name =
+        i === 0
+          ? 'You'
+          : config.playerCount === 2
+            ? `AI (${AI_DIFFICULTY_LABELS[config.aiDifficulty]})`
+            : `AI ${i} (${AI_DIFFICULTY_LABELS[config.aiDifficulty]})`
     } else {
       name = `Player ${i + 1}`
     }
@@ -79,15 +86,20 @@ export function createPlayers(config: GameConfig): Player[] {
 }
 
 export function startGame(config: GameConfig): GameState {
+  const players = createPlayers(config)
   return {
     board: createBoard(),
-    players: createPlayers(config),
-    currentPlayerIndex: 0,
+    players,
+    currentPlayerIndex: Math.floor(Math.random() * players.length),
     phase: 'playing',
     turnChain: [],
     activePiece: null,
     winnerIds: [],
     lastMove: null,
+    confirmTurns: false,
+    aiDifficulty: config.aiDifficulty,
+    turnStartBoard: null,
+    awaitingConfirm: false,
   }
 }
 
@@ -151,8 +163,22 @@ function executeJumpOnBoard(board: Board, jump: JumpStep): Board {
   return next
 }
 
+function shouldHoldForConfirm(state: GameState): boolean {
+  return (
+    state.confirmTurns && !state.players[state.currentPlayerIndex]?.isAI
+  )
+}
+
+function holdForConfirm(state: GameState): GameState {
+  return {
+    ...state,
+    activePiece: null,
+    awaitingConfirm: true,
+  }
+}
+
 export function applyJump(state: GameState, jump: JumpStep): GameState {
-  if (state.phase !== 'playing') return state
+  if (state.phase !== 'playing' || state.awaitingConfirm) return state
 
   const available = getAvailableJumps(state.board, state.activePiece)
   const canonical = available.find(
@@ -164,31 +190,81 @@ export function applyJump(state: GameState, jump: JumpStep): GameState {
   )
   if (!canonical) return state
 
+  const turnStartBoard =
+    state.turnChain.length === 0
+      ? cloneBoard(state.board)
+      : state.turnStartBoard
+
   const board = executeJumpOnBoard(state.board, canonical)
   const turnChain = [...state.turnChain, canonical]
   const further = getSingleJumpsFrom(board, canonical.to)
 
+  const nextBase: GameState = {
+    ...state,
+    board,
+    turnChain,
+    turnStartBoard,
+  }
+
   if (further.length === 0) {
+    if (shouldHoldForConfirm(nextBase)) {
+      return holdForConfirm(nextBase)
+    }
     return commitTurn({
-      ...state,
-      board,
-      turnChain,
+      ...nextBase,
       activePiece: null,
     })
   }
 
   return {
-    ...state,
-    board,
-    turnChain,
+    ...nextBase,
     activePiece: { ...canonical.to },
+    awaitingConfirm: false,
   }
 }
 
+/** Stop jumping early (still may need Confirm if that option is on). */
 export function endTurn(state: GameState): GameState {
   if (state.phase !== 'playing') return state
   if (state.turnChain.length === 0) return state
-  return commitTurn({ ...state, activePiece: null })
+  if (state.awaitingConfirm) return state
+
+  const stopped = { ...state, activePiece: null }
+  if (shouldHoldForConfirm(stopped)) {
+    return holdForConfirm(stopped)
+  }
+  return commitTurn(stopped)
+}
+
+/** Toggle confirm-before-hand-off during an active game. */
+export function setConfirmTurns(state: GameState, enabled: boolean): GameState {
+  if (state.confirmTurns === enabled) return state
+  // Turning confirm off while held: commit so the game isn't stuck
+  if (!enabled && state.awaitingConfirm) {
+    return confirmTurn({ ...state, confirmTurns: false })
+  }
+  return { ...state, confirmTurns: enabled }
+}
+
+/** Confirm a held turn and hand off to the next player. */
+export function confirmTurn(state: GameState): GameState {
+  if (state.phase !== 'playing') return state
+  if (!state.awaitingConfirm || state.turnChain.length === 0) return state
+  return commitTurn({ ...state, awaitingConfirm: false, activePiece: null })
+}
+
+/** Undo the entire current turn back to its start. */
+export function undoTurn(state: GameState): GameState {
+  if (state.phase !== 'playing') return state
+  if (!state.turnStartBoard || state.turnChain.length === 0) return state
+  return {
+    ...state,
+    board: cloneBoard(state.turnStartBoard),
+    turnChain: [],
+    activePiece: null,
+    awaitingConfirm: false,
+    turnStartBoard: null,
+  }
 }
 
 function commitTurn(state: GameState): GameState {
@@ -211,6 +287,8 @@ function commitTurn(state: GameState): GameState {
       players,
       turnChain: [],
       activePiece: null,
+      turnStartBoard: null,
+      awaitingConfirm: false,
       lastMove,
       phase: 'ended',
       winnerIds: determineWinners(players),
@@ -224,6 +302,8 @@ function commitTurn(state: GameState): GameState {
     currentPlayerIndex: (state.currentPlayerIndex + 1) % players.length,
     turnChain: [],
     activePiece: null,
+    turnStartBoard: null,
+    awaitingConfirm: false,
     lastMove,
     phase: 'playing',
   }
@@ -278,32 +358,34 @@ export function scoreJumpChain(captures: Captures, chain: JumpStep[]): number {
   return sets * 1000 + total * 10 - variance * 0.01 + chain.length * 0.5
 }
 
-const AI_MAX_DEPTH = 8
-const AI_MAX_STARTS = 40
+interface ScoredChain {
+  chain: JumpStep[]
+  score: number
+  boardAfter: Board
+}
 
-/** Find best multi-jump chain for AI (considers early stops). */
-export function findBestChain(
+function enumerateChains(
   board: Board,
   captures: Captures,
-): JumpStep[] | null {
+  maxDepth: number,
+  maxStarts: number,
+): ScoredChain[] {
   let starts = piecesWithMoves(board)
-  if (starts.length > AI_MAX_STARTS) {
-    // Sample when the board is crowded to keep turns snappy
-    starts = shuffle(starts).slice(0, AI_MAX_STARTS)
+  if (starts.length > maxStarts) {
+    starts = shuffle(starts).slice(0, maxStarts)
   }
 
-  let best: JumpStep[] | null = null
-  let bestScore = -Infinity
+  const results: ScoredChain[] = []
 
   const explore = (currentBoard: Board, pos: Pos, chain: JumpStep[]) => {
     if (chain.length > 0) {
-      const score = scoreJumpChain(captures, chain)
-      if (score > bestScore) {
-        bestScore = score
-        best = [...chain]
-      }
+      results.push({
+        chain: [...chain],
+        score: scoreJumpChain(captures, chain),
+        boardAfter: cloneBoard(currentBoard),
+      })
     }
-    if (chain.length >= AI_MAX_DEPTH) return
+    if (chain.length >= maxDepth) return
 
     for (const jump of getSingleJumpsFrom(currentBoard, pos)) {
       const nextBoard = executeJumpOnBoard(currentBoard, jump)
@@ -315,35 +397,129 @@ export function findBestChain(
     explore(board, start, [])
   }
 
+  return results
+}
+
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)]
+}
+
+/** Greedy best chain (medium baseline). */
+export function findBestChain(
+  board: Board,
+  captures: Captures,
+): JumpStep[] | null {
+  const chains = enumerateChains(board, captures, 8, 40)
+  if (chains.length === 0) return null
+  chains.sort((a, b) => b.score - a.score)
+  return chains[0].chain
+}
+
+/**
+ * Easy: short, weak, often random — most kids can win.
+ * Medium: greedy set-building with a little noise.
+ * Hard: greedy plus denial — avoid leaving the opponent a strong reply.
+ */
+export function findChainForDifficulty(
+  board: Board,
+  captures: Captures,
+  difficulty: AiDifficulty,
+  opponentCaptures: Captures = emptyCaptures(),
+): JumpStep[] | null {
+  if (difficulty === 'easy') {
+    const chains = enumerateChains(board, captures, 2, 24)
+    if (chains.length === 0) return null
+    // Prefer short / low-scoring moves; sometimes pure random
+    if (Math.random() < 0.55) {
+      const singles = chains.filter((c) => c.chain.length === 1)
+      const pool = singles.length > 0 ? singles : chains
+      pool.sort((a, b) => a.score - b.score)
+      const weak = pool.slice(0, Math.max(1, Math.ceil(pool.length * 0.45)))
+      return pickRandom(weak).chain
+    }
+    return pickRandom(chains).chain
+  }
+
+  if (difficulty === 'medium') {
+    const chains = enumerateChains(board, captures, 7, 36)
+    if (chains.length === 0) return null
+    chains.sort((a, b) => b.score - a.score)
+    // Usually best; sometimes 2nd/3rd so a practiced player can outplay it
+    if (chains.length >= 3 && Math.random() < 0.28) {
+      return chains[1 + Math.floor(Math.random() * 2)].chain
+    }
+    if (chains.length >= 2 && Math.random() < 0.12) {
+      return chains[1].chain
+    }
+    return chains[0].chain
+  }
+
+  // Hard: maximize own value while minimizing opponent's best follow-up
+  const chains = enumerateChains(board, captures, 8, 32)
+  if (chains.length === 0) return null
+
+  let best: JumpStep[] | null = null
+  let bestScore = -Infinity
+
+  // Cap evaluation for speed
+  const candidates = chains
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.min(chains.length, 48))
+
+  for (const candidate of candidates) {
+    const oppChains = enumerateChains(
+      candidate.boardAfter,
+      opponentCaptures,
+      6,
+      28,
+    )
+    const oppBest =
+      oppChains.length === 0
+        ? 0
+        : Math.max(...oppChains.map((c) => c.score))
+    // Strong weight on denial so it avoids handing you big turns
+    const denial = oppBest * 0.85
+    const adjusted = candidate.score - denial + candidate.chain.length * 0.2
+    if (adjusted > bestScore) {
+      bestScore = adjusted
+      best = candidate.chain
+    }
+  }
+
   return best
 }
 
 export function applyFullChain(state: GameState, chain: JumpStep[]): GameState {
-  let next = state
+  // AI never uses confirm-hold
+  const aiState = { ...state, confirmTurns: false }
+  let next = aiState
   for (const step of chain) {
     if (next.phase !== 'playing') break
-    // After first jump, activePiece is at the landing; map step.from accordingly
     const from =
       next.activePiece ??
-      (next.turnChain.length === 0 ? step.from : next.turnChain[next.turnChain.length - 1].to)
+      (next.turnChain.length === 0
+        ? step.from
+        : next.turnChain[next.turnChain.length - 1].to)
 
     const available = getAvailableJumps(next.board, next.activePiece)
     const match = available.find(
-      (j) => j.from.row === from.row && j.from.col === from.col && j.to.row === step.to.row && j.to.col === step.to.col,
+      (j) =>
+        j.from.row === from.row &&
+        j.from.col === from.col &&
+        j.to.row === step.to.row &&
+        j.to.col === step.to.col,
     )
     if (!match) {
-      // try match by to only when mid-turn
-      const byTo = available.find((j) => j.to.row === step.to.row && j.to.col === step.to.col)
+      const byTo = available.find(
+        (j) => j.to.row === step.to.row && j.to.col === step.to.col,
+      )
       if (!byTo) break
       next = applyJump(next, byTo)
     } else {
       next = applyJump(next, match)
     }
 
-    // If turn auto-ended after no further jumps, done
     if (next.turnChain.length === 0 && next.activePiece === null) {
-      // Either committed mid-chain last jump or something else
-      // If there are remaining steps we intended, turn may have auto-ended because no further jumps
       break
     }
   }
@@ -351,5 +527,6 @@ export function applyFullChain(state: GameState, chain: JumpStep[]): GameState {
   if (next.turnChain.length > 0) {
     next = endTurn(next)
   }
-  return next
+  // Restore confirmTurns flag for subsequent human turns
+  return { ...next, confirmTurns: state.confirmTurns }
 }
